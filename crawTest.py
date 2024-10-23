@@ -1,54 +1,42 @@
 import pycurl
 from io import BytesIO
-import re
 from bs4 import BeautifulSoup
+GIT_URL = "https://github.com/bbrumm/databasestar/tree/main/sample_databases/sample_db_videogames/sqlserver"
+GIT_URL_DOWLOAD = "https://raw.githubusercontent.com/bbrumm/databasestar/main/sample_databases/sample_db_videogames/sqlserver/"
 
-# Install dependencies:
-# pip install pycurl beautifulsoup4
+# Function to decode html to soup
+def decode(html):
+    return BeautifulSoup(html.decode("utf-8"), 'html.parser')
 
-BASE_URL = 'https://github.com'
-GITHUB_FOLDER_URL = 'https://github.com/bbrumm/databasestar/tree/main/sample_databases/sample_db_movies/sqlserver'
-RAW_GITHUB_URL = 'https://raw.githubusercontent.com/bbrumm/databasestar/main/sample_databases/sample_db_movies/sqlserver/'
-
-# Function to download HTML content of the page
-def fetch_html(url):
+# Function to loadlink from string
+def feth(url):
     buffer = BytesIO()
     c = pycurl.Curl()
-    c.setopt(c.URL, url)
+    c.setopt(c.URL,url)
     c.setopt(c.WRITEDATA, buffer)
     c.perform()
     c.close()
-    return buffer.getvalue().decode('utf-8')
+    return buffer.getvalue()
 
 # Function to download a specific SQL file
 def download_file(file_url, file_name):
-    buffer = BytesIO()
-    c = pycurl.Curl()
-    c.setopt(c.URL, file_url)
-    c.setopt(c.WRITEDATA, buffer)
-    c.perform()
-    c.close()
-
+    print(f'Downloading {file_name} from {file_url}')
+    buffer = feth(file_url)
     with open(file_name, 'wb') as f:
-        f.write(buffer.getvalue())
+        f.write(buffer)
 
-# Scrape GitHub page for .sql files
-html_content = fetch_html(GITHUB_FOLDER_URL)
+buffer = feth(GIT_URL)
+soup = decode(buffer)
 
-# Use BeautifulSoup to parse the HTML
-soup = BeautifulSoup(html_content, 'html.parser')
+sql = []
+for link in soup.find_all("a",href=True) :
+    href = link["href"]
+    if (href.endswith(".sql")):
+        href = href.split("/")[-1]
+        sql.append(href)
+    
+for item in sql:
+    file_url = f"{GIT_URL_DOWLOAD}{item}"
+    download_file(file_url,item)
 
-# Find all the links to .sql files
-sql_files = []
-for link in soup.find_all('a', href=True):
-    href = link['href']
-    if href.endswith('.sql'):
-        sql_files.append(href.split('/')[-1])  # Extract file name
-
-# Download each SQL file
-for sql_file in sql_files:
-    file_url = f'{RAW_GITHUB_URL}{sql_file}'
-    print(f'Downloading {sql_file} from {file_url}')
-    download_file(file_url, sql_file)
-
-print("Download complete.")
+print("Dowload file sucessfully !!!")
